@@ -216,21 +216,42 @@ def _extract_price_hint(text: str) -> float | None:
     if not text:
         return None
 
-    tl_pattern = re.compile(
-        r"(?<!\d)(\d{1,3}(?:[.\s]\d{3})+|\d{4,11}|\d+(?:[.,]\d{1,2})?)\s*(?:TL|₺)\b",
+    # ₺ önde: ₺6.850.000 veya ₺ 6.850.000
+    tl_prefix = re.compile(
+        r"₺\s*(\d{1,3}(?:[.\s]\d{3})+|\d{4,11})\b",
         re.IGNORECASE,
     )
-    for match in tl_pattern.finditer(text):
+    for match in tl_prefix.finditer(text):
         value = _parse_number_token(match.group(1))
         if value is not None and value >= 1_000:
             return value
 
+    # Sayı sonda TL/₺: 6.850.000 TL veya 6.850.000₺
+    tl_suffix = re.compile(
+        r"(?<!\d)(\d{1,3}(?:[.\s]\d{3})+|\d{4,11}|\d+(?:[.,]\d{1,2})?)\s*(?:TL|₺)\b",
+        re.IGNORECASE,
+    )
+    for match in tl_suffix.finditer(text):
+        value = _parse_number_token(match.group(1))
+        if value is not None and value >= 1_000:
+            return value
+
+    # X milyon [TL/₺]
     milyon_match = re.search(r"(\d+(?:[.,]\d+)?)\s*milyon", _normalize_text(text), re.IGNORECASE)
     if milyon_match:
         base = _parse_number_token(milyon_match.group(1))
         if base is not None:
             value = base * 1_000_000
             return value if value > 0 else None
+
+    # Snippet'lerde sadece büyük rakam (fiyat satırları): "30.000" veya "1.273"
+    # Sadece noktalı binlik ayıraçlı rakamlar (min 4 hane)
+    bare_number = re.compile(r"(?<!\d)(\d{1,3}(?:\.\d{3})+)(?!\s*m[²2]|\s*\d)(?!\w)")
+    for match in bare_number.finditer(text):
+        value = _parse_number_token(match.group(1))
+        if value is not None and 5_000 <= value <= 500_000_000:
+            return value
+
     return None
 
 
@@ -940,7 +961,19 @@ async def search_serper_candidates(queries: list[str], max_results: int = 8) -> 
                         if url and url not in seen and is_real_estate_domain(url):
                             seen.add(url)
                             title = result.get("title", "") or ""
-                            snippet = result.get("snippet", "") or ""
+                            snippet_parts = [result.get("snippet", "") or ""]
+                            # Serper ek alanlar: attributes ve priceRange fiyat icin zenginlestirir
+                            attrs = result.get("attributes") or {}
+                            for v in attrs.values():
+                                if v and isinstance(v, str):
+                                    snippet_parts.append(v)
+                            price_range = result.get("priceRange") or ""
+                            if price_range:
+                                snippet_parts.append(price_range)
+                            date_str = result.get("date") or ""
+                            if date_str:
+                                snippet_parts.append(date_str)
+                            snippet = " | ".join(p for p in snippet_parts if p)
                             candidates.append(_build_candidate(url=url, source="serper", title=title, snippet=snippet))
             except Exception as e:
                 logger.warning(f"Serper failed for '{query}': {e}")
