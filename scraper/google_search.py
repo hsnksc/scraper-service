@@ -395,25 +395,36 @@ def _query_terms(listing_type: str, property_type: str) -> list[str]:
     property_terms = PROPERTY_TYPE_KEYWORDS_TR.get(property_type, PROPERTY_TYPE_KEYWORDS_TR["all"])
 
     if listing_type == "all" and property_type == "all":
-        # 4 kategori: Konut Satılık, Konut Kiralık, Ticari Satılık, Ticari Kiralık
+        # 4 kategori, fiyat+m2 zorla
         return [
-            "satilik daire konut",
-            "kiralik daire konut",
-            "satilik ticari isyeri",
-            "kiralik ticari isyeri",
-            "satilik emlak",
-            "kiralik emlak",
+            "satilik daire konut fiyat m2",
+            "kiralik daire konut fiyat TL",
+            "satilik ticari isyeri fiyat m2",
+            "kiralik ticari isyeri fiyat TL",
+            "satilik konut metrekare",
+            "kiralik konut metrekare",
         ]
 
     if listing_type == "all":
         primary_property = property_terms[0]
-        return [f"satilik {primary_property}", f"kiralik {primary_property}", f"{primary_property} emlak"]
+        return [
+            f"satilik {primary_property} fiyat m2",
+            f"kiralik {primary_property} fiyat TL",
+            f"{primary_property} emlak fiyat",
+        ]
 
     if property_type == "all":
         primary_listing = listing_terms[0]
-        return [primary_listing, f"{primary_listing} emlak"]
+        return [
+            f"{primary_listing} konut fiyat m2",
+            f"{primary_listing} isyeri fiyat TL",
+            f"{primary_listing} emlak metrekare",
+        ]
 
-    return [f"{listing_terms[0]} {property_terms[0]}", f"{listing_terms[0]} emlak {property_terms[0]}"]
+    return [
+        f"{listing_terms[0]} {property_terms[0]} fiyat m2",
+        f"{listing_terms[0]} {property_terms[0]} TL metrekare",
+    ]
 
 
 def _add_search_strategy(current: str, source: str) -> str:
@@ -1293,35 +1304,26 @@ async def discover_listing_urls(
                     urls.append(url)
                 _upsert_candidate(candidate_map, candidate)
     else:
-        if len(urls) < 4:
-            tavily_candidates = await search_tavily_candidates(queries)
-            if tavily_candidates:
-                search_strategy = _add_search_strategy(search_strategy, "tavily")
-                for candidate in tavily_candidates:
-                    url = candidate["url"]
-                    if url not in urls:
-                        urls.append(url)
-                    _upsert_candidate(candidate_map, candidate)
-
-        if len(urls) < 4:
-            exa_candidates = await search_exa_candidates(queries)
-            if exa_candidates:
-                search_strategy = _add_search_strategy(search_strategy, "exa")
-                for candidate in exa_candidates:
-                    url = candidate["url"]
-                    if url not in urls:
-                        urls.append(url)
-                    _upsert_candidate(candidate_map, candidate)
-
-        if len(urls) < 4:
-            serper_candidates = await search_serper_candidates(queries)
-            if serper_candidates:
-                search_strategy = _add_search_strategy(search_strategy, "serper")
-                for candidate in serper_candidates:
-                    url = candidate["url"]
-                    if url not in urls:
-                        urls.append(url)
-                    _upsert_candidate(candidate_map, candidate)
+        # 3 provider'ı her zaman paralel çalıştır - erken durdurma yok
+        _provider_names = ["tavily", "exa", "serper"]
+        _provider_results = await asyncio.gather(
+            search_tavily_candidates(queries),
+            search_exa_candidates(queries),
+            search_serper_candidates(queries),
+            return_exceptions=True,
+        )
+        for _src, _rows in zip(_provider_names, _provider_results):
+            if isinstance(_rows, Exception) or not isinstance(_rows, list):
+                continue
+            if _rows:
+                search_strategy = _add_search_strategy(search_strategy, _src)
+            for candidate in _rows:
+                url = candidate.get("url")
+                if not url:
+                    continue
+                if url not in urls:
+                    urls.append(url)
+                _upsert_candidate(candidate_map, candidate)
 
         if not urls:
             search_strategy = "search_engine_fallback"
