@@ -120,7 +120,10 @@ async def start_scrape(request: Request):
     Body: {"lat": "41.0082", "lng": "28.9784", "listing_type": "sale|rent|all", "property_type": "residential|commercial|land|all"}
     Response: {"job_id": "...", "status": "running"}
     """
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception:
+        raise HTTPException(400, "gecersiz veya bos JSON body")
     lat = data.get("lat", "").strip()
     lng = data.get("lng", "").strip()
 
@@ -202,7 +205,10 @@ async def start_scrape_stream(request: Request):
 @app.post("/api/scrape/run")
 async def run_scrape_sync(request: Request):
     """Tek request'te scrape edip ilanlari geri dondur."""
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception:
+        raise HTTPException(400, "gecersiz veya bos JSON body")
     lat = data.get("lat", "").strip()
     lng = data.get("lng", "").strip()
 
@@ -235,7 +241,12 @@ async def run_discovery_sync(request: Request):
     """
     Scrape yapmadan sadece search API'lerle aday ilanlari topla ve hizli analiz dondur.
     """
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception:
+        raise HTTPException(400, "gecersiz veya bos JSON body")
+    if not isinstance(data, dict):
+        raise HTTPException(400, "JSON body dict olmali")
     lat = data.get("lat", "").strip()
     lng = data.get("lng", "").strip()
 
