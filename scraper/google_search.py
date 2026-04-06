@@ -395,7 +395,15 @@ def _query_terms(listing_type: str, property_type: str) -> list[str]:
     property_terms = PROPERTY_TYPE_KEYWORDS_TR.get(property_type, PROPERTY_TYPE_KEYWORDS_TR["all"])
 
     if listing_type == "all" and property_type == "all":
-        return ["emlak", "satilik", "kiralik", "satilik isyeri", "kiralik isyeri", "ticari emlak"]
+        # 4 kategori: Konut Satılık, Konut Kiralık, Ticari Satılık, Ticari Kiralık
+        return [
+            "satilik daire konut",
+            "kiralik daire konut",
+            "satilik ticari isyeri",
+            "kiralik ticari isyeri",
+            "satilik emlak",
+            "kiralik emlak",
+        ]
 
     if listing_type == "all":
         primary_property = property_terms[0]
@@ -764,7 +772,7 @@ def build_radius_queries(geo: dict, listing_type: str = "all", property_type: st
 
     for location in location_variants[:2]:
         quoted = f'"{location}"'
-        for term in query_terms[:4]:
+        for term in query_terms[:6]:
             queries.append(f"{quoted} {term}")
 
     primary_location = location_variants[0] if location_variants else geo.get("city", "")
@@ -1022,7 +1030,11 @@ async def search_exa_candidates(queries: list[str], max_results: int = 8) -> lis
                 "numResults": max_results,
                 "includeDomains": KNOWN_SITES,
                 "contents": {
-                    "highlights": {"maxCharacters": 1200},
+                    "highlights": {
+                        "maxCharacters": 1200,
+                        "query": "fiyat TL metrekare oda ilan",
+                    },
+                    "maxAgeHours": 2160,
                 },
             }
             try:
