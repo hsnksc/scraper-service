@@ -796,7 +796,7 @@ def build_radius_queries(geo: dict, listing_type: str = "all", property_type: st
             deduped.append(normalized)
             seen.add(normalized)
 
-    return deduped[:16]
+    return deduped[:24]
 
 
 async def search_google_pages(queries: list[str], num_pages: int = 1, delay: float = 4.0) -> tuple[list[str], bool]:
@@ -1269,7 +1269,7 @@ async def discover_listing_urls(
     if fast_mode:
         provider_timeout = float(os.getenv("DISCOVERY_PROVIDER_TIMEOUT_SECONDS", "8") or "8")
         provider_query_limit = max(1, int(os.getenv("DISCOVERY_PROVIDER_QUERY_LIMIT", "3") or "3"))
-        provider_max_results = num_pages * 10
+        provider_max_results = max(15, num_pages * 10)
         provider_queries = queries[:provider_query_limit]
         provider_jobs = [
             ("tavily", search_tavily_candidates(provider_queries, max_results=provider_max_results)),

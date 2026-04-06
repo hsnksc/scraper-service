@@ -74,7 +74,7 @@ class ScrapeOrchestrator:
             job.search_context = {
                 "geo": discovery["geo"],
                 "queries": discovery["queries"],
-                "discovery_candidates": discovery.get("candidates", [])[:20],
+                "discovery_candidates": discovery.get("candidates", [])[:50],
                 "discovery_candidate_count": len(discovery.get("candidates", [])),
                 "direct_urls": discovery.get("direct_urls", []),
                 "query_count": len(discovery["queries"]),
