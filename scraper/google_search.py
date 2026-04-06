@@ -329,6 +329,18 @@ def _build_candidate(url: str, source: str, title: str = "", snippet: str = "") 
     price_hint = _extract_price_hint(title) or _extract_price_hint(snippet)
     area_hint = _extract_area_hint(title) or _extract_area_hint(snippet)
     rooms_hint = _extract_rooms_hint(title) or _extract_rooms_hint(snippet)
+
+    # Fiyat-tip tutarsizlik duzeltme:
+    # Kiralik icin 750K TRY ustu fiyat = snippette satilik fiyati karismis
+    # Satilik icin 200K TRY alti fiyat = muhtemelen kira/depozito
+    if price_hint is not None:
+        if listing_type_hint == "rent" and price_hint > 750_000:
+            listing_type_hint = "sale"
+        elif listing_type_hint == "sale" and price_hint < 200_000:
+            listing_type_hint = "rent"
+        elif listing_type_hint is None:
+            listing_type_hint = "sale" if price_hint > 750_000 else None
+
     return {
         "url": url,
         "sources": [source],

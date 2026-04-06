@@ -59,6 +59,13 @@ def _listing_preview(item: dict) -> dict:
     price_per_m2_try = round(price / area) if price and area and area > 0 else None
     lt = item.get("listing_type")
     pt = item.get("property_type")
+
+    # Fiyat-tip tutarsizlik duzeltme (scraped listinglar icin)
+    if price_try is not None:
+        if lt == "rent" and price_try > 750_000:
+            lt = "sale"
+        elif lt == "sale" and price_try < 200_000:
+            lt = "rent"
     return {
         "source_url": item.get("source_url"),
         "source_site": item.get("source_site"),
