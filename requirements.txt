@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+jinja2
+python-dotenv
+openai
+playwright
+googlesearch-python
+pydantic>=2.0
+aiohttp
+geopy
+ddgs

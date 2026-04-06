@@ -1,0 +1,56 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script: |
+            set -e
+
+            REPO_DIR="/opt/scraper"
+
+            # İlk deployysa repoyu klonla
+            if [ ! -d "$REPO_DIR/.git" ]; then
+              git clone https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git "$REPO_DIR"
+            fi
+
+            cd "$REPO_DIR"
+
+            # Güncel kodu çek
+            git fetch origin main
+            git reset --hard origin/main
+
+            # .env dosyası sunucuda zaten var olmalı — üzerine yazma
+            if [ ! -f "deploy/.env" ]; then
+              echo "HATA: deploy/.env dosyası sunucuda bulunamadı!" >&2
+              exit 1
+            fi
+
+            # loca_network yoksa oluştur
+            docker network inspect loca_network >/dev/null 2>&1 || \
+              docker network create loca_network
+
+            # Build & yeniden başlat
+            docker compose -f deploy/docker-compose.yml up -d --build
+
+            # Sağlık kontrolü (30s bekle)
+            sleep 10
+            curl -sf http://localhost:8010/health || (echo "Health check başarısız!" && exit 1)
+
+            echo "Deploy tamamlandı."

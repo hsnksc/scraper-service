@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+.vendor/
+venv/
+*.egg-info/
+
+# Ortam
+.env
+*.env
+
+# Log dosyaları
+*.log
+_run_uvicorn_out.log
+_run_uvicorn_err.log
+_start_api_out.log
+_start_api_err.log
+_api_stdout.log
+_api_stderr.log
+
+# Analiz çıktıları (geçici test verileri)
+_analysis_*.json
+_analysis_summary*.json
+_bands_*.json
+
+# VS Code / Claude
+.claude/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

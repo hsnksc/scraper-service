@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emlak Scraper</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            padding: 1.25rem 1rem 0.5rem;
+            border-bottom: 1px solid #1e293b;
+        }
+        .header h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header .subtitle { color: #64748b; font-size: 0.8rem; }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        /* Form */
+        .form-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 1rem;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr auto;
+            gap: 0.75rem;
+            align-items: end;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            color: #94a3b8;
+            margin-bottom: 0.3rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.6rem 0.8rem;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 0.5rem;
+            color: #e2e8f0;
+            font-size: 0.85rem;
+            outline: none;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #3b82f6;
+        }
+        .btn-submit {
+            padding: 0.6rem 1.5rem;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .btn-submit:hover { opacity: 0.9; }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Progress */
+        .progress-bar {
+            display: none;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 0.75rem;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+        }
+        .progress-bar.show { display: block; }
+        .progress-text {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+        }
+        .progress-track {
+            height: 6px;
+            background: #334155;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .progress-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.7rem;
+            color: #64748b;
+        }
+        .progress-stats .stat { display: flex; gap: 0.3rem; }
+        .progress-stats .val { color: #e2e8f0; font-weight: 600; }
+
+        /* Results Table */
+        .results-section {
+            display: none;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+        .results-section.show { display: block; }
+
+        .results-header {
+            padding: 1rem 1.25rem;
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .results-header h2 {
+            font-size: 1rem;
+            color: #93c5fd;
+        }
+        .results-count {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        th {
+            text-align: left;
+            padding: 0.6rem 0.75rem;
+            background: #0f172a;
+            color: #94a3b8;
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid #334155;
+            white-space: nowrap;
+        }
+        td {
+            padding: 0.6rem 0.75rem;
+            border-bottom: 1px solid #1e293b;
+            color: #cbd5e1;
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        tr:hover td { background: #1e293b55; }
+        td a {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+        td a:hover { text-decoration: underline; }
+
+        .badge {
+            display: inline-block;
+            padding: 0.1rem 0.4rem;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 600;
+        }
+        .badge-sale { background: #14532d; color: #4ade80; }
+        .badge-rent { background: #1e3a5f; color: #60a5fa; }
+        .badge-residential { background: #422006; color: #fbbf24; }
+        .badge-commercial { background: #4a1942; color: #e879f9; }
+        .badge-land { background: #1c1917; color: #a8a29e; }
+
+        .price-cell { font-weight: 700; color: #4ade80; white-space: nowrap; }
+
+        @media (max-width: 768px) {
+            .form-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Emlak Radius Scraper</h1>
+        <p class="subtitle">Koordinat girin, belirli bir lokasyon cevresindeki emlak ilanlarini otomatik olarak toplayin</p>
+    </div>
+
+    <div class="container">
+        <!-- Form -->
+        <div class="form-card">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Enlem (lat)</label>
+                    <input type="text" id="latInput" placeholder="41.0082">
+                </div>
+                <div class="form-group">
+                    <label>Boylam (lng)</label>
+                    <input type="text" id="lngInput" placeholder="28.9784">
+                </div>
+                <div class="form-group">
+                    <label>Ilan Tipi</label>
+                    <select id="listingType">
+                        <option value="all">Hepsi</option>
+                        <option value="sale">Satilik</option>
+                        <option value="rent">Kiralik</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Mulk Tipi</label>
+                    <select id="propertyType">
+                        <option value="all">Hepsi</option>
+                        <option value="residential">Konut</option>
+                        <option value="commercial">Ticari</option>
+                        <option value="land">Arsa</option>
+                    </select>
+                </div>
+                <button class="btn-submit" id="startBtn" onclick="startScrape()">Baslat</button>
+            </div>
+            <div style="margin-top:0.5rem;font-size:0.7rem;color:#64748b" id="geoInfo"></div>
+        </div>
+
+        <!-- Progress -->
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-text" id="progressText">Hazirlaniyor...</div>
+            <div class="progress-track">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-stats">
+                <div class="stat">URL bulundu: <span class="val" id="statUrlsFound">0</span></div>
+                <div class="stat">Kazindi: <span class="val" id="statUrlsScraped">0</span></div>
+                <div class="stat">Ilan cikarildi: <span class="val" id="statListings">0</span></div>
+                <div class="stat">Hata: <span class="val" id="statErrors">0</span></div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="results-section" id="resultsSection">
+            <div class="results-header">
+                <h2>İlan Sonuclari</h2>
+                <span class="results-count" id="resultsCount"></span>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Kaynak</th>
+                            <th>Baslik</th>
+                            <th>Fiyat</th>
+                            <th>m²</th>
+                            <th>Oda</th>
+                            <th>Tip</th>
+                            <th>Lokasyon</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentJobId = null;
+
+        async function startScrape() {
+            const lat = document.getElementById('latInput').value.trim();
+            const lng = document.getElementById('lngInput').value.trim();
+            if (!lat || !lng) { alert('Enlem ve boylam giriniz'); return; }
+
+            const listingType = document.getElementById('listingType').value;
+            const propertyType = document.getElementById('propertyType').value;
+
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('geoInfo').textContent = `Reverse geocode yapiliyor (${lat}, ${lng})...`;
+            document.getElementById('progressBar').classList.remove('show');
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('resultsSection').classList.remove('show');
+            document.getElementById('resultsBody').innerHTML = '';
+
+            try {
+                const res = await fetch('/api/scrape', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({lat, lng, listing_type: listingType, property_type: propertyType})
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'Hata');
+                    document.getElementById('startBtn').disabled = false;
+                    return;
+                }
+                const data = await res.json();
+                currentJobId = data.job_id;
+                document.getElementById('progressBar').classList.add('show');
+                document.getElementById('progressText').textContent = 'Google araniyor...';
+                pollJob();
+            } catch (e) {
+                alert('Baglanti hatasi: ' + e.message);
+                document.getElementById('startBtn').disabled = false;
+            }
+        }
+
+        async function pollJob() {
+            if (!currentJobId) return;
+
+            const poll = async () => {
+                try {
+                    const res = await fetch(`/api/jobs/${currentJobId}`);
+                    const data = await res.json();
+
+                    updateProgress(data);
+
+                    if (data.status === 'running') {
+                        setTimeout(poll, 1500);
+                    } else {
+                        document.getElementById('startBtn').disabled = false;
+                        if (data.status === 'completed' && data.listings_count > 0) {
+                            renderTable(data.listings);
+                        }
+                    }
+                } catch (e) {
+                    setTimeout(poll, 3000);
+                }
+            };
+            poll();
+        }
+
+        function updateProgress(data) {
+            document.getElementById('progressText').textContent = data.progress || 'Calisiyor...';
+            document.getElementById('statUrlsFound').textContent = data.total_urls_found || 0;
+            document.getElementById('statUrlsScraped').textContent = data.total_urls_scraped || 0;
+            document.getElementById('statListings').textContent = data.listings_count || 0;
+            document.getElementById('statErrors').textContent = data.total_errors || 0;
+
+            if (data.total_urls_found > 0) {
+                const pct = Math.min(100, Math.round((data.total_urls_scraped / data.total_urls_found) * 100));
+                document.getElementById('progressFill').style.width = pct + '%';
+            }
+        }
+
+        function renderTable(listings) {
+            const section = document.getElementById('resultsSection');
+            const tbody = document.getElementById('resultsBody');
+            const count = document.getElementById('resultsCount');
+
+            tbody.innerHTML = '';
+            count.textContent = listings.length + ' ilan bulundu';
+
+            listings.forEach(l => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><span class="badge badge-${l.source_site || ''}">${escHtml(l.source_site || '')}</span></td>
+                    <td><a href="${escHtml(l.source_url)}" target="_blank">${escHtml(l.title || '-')}</a></td>
+                    <td class="price-cell">${l.price ? formatPrice(l.price) : '-'}</td>
+                    <td>${l.area_sqm || '-'}</td>
+                    <td>${l.rooms || '-'}</td>
+                    <td><span class="badge badge-${l.listing_type || 'sale'}">${typeLabel(l.listing_type)}</span>
+                        <span class="badge badge-${l.property_type || 'residential'}">${propLabel(l.property_type)}</span></td>
+                    <td>${escHtml([l.district, l.city].filter(Boolean).join(', ') || '-')}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            section.classList.add('show');
+        }
+
+        function formatPrice(n) {
+            if (!n) return '-';
+            return '₺' + Number(n).toLocaleString('tr-TR');
+        }
+
+        function typeLabel(t) {
+            if (t === 'sale') return 'Satilik';
+            if (t === 'rent') return 'Kiralik';
+            return t || '-';
+        }
+
+        function propLabel(t) {
+            if (t === 'residential') return 'Konut';
+            if (t === 'commercial') return 'Ticari';
+            if (t === 'land') return 'Arsa';
+            return t || '';
+        }
+
+        function escHtml(s) {
+            const d = document.createElement('div');
+            d.textContent = s || '';
+            return d.innerHTML;
+        }
+
+        document.getElementById('latInput').addEventListener('keydown', e => {
+            if (e.key === 'Enter') startScrape();
+        });
+        document.getElementById('lngInput').addEventListener('keydown', e => {
+            if (e.key === 'Enter') startScrape();
+        });
+    </script>
+</body>
+</html>
