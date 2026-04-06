@@ -40,20 +40,44 @@ def _bucket_name(listing_type: str | None, property_type: str | None) -> str:
     return f"{lt}_{pt}"
 
 
+_LISTING_TYPE_TR: dict[str, str] = {
+    "sale": "Satılık",
+    "rent": "Kiralık",
+}
+_PROPERTY_TYPE_TR: dict[str, str] = {
+    "residential": "Konut",
+    "commercial": "Ticari",
+    "land": "Arsa / Tarla",
+}
+
+
 def _listing_preview(item: dict) -> dict:
+    price = _safe_float(item.get("price"))
+    area = _safe_float(item.get("area_sqm"))
+    price_try = round(price) if price is not None else None
+    size_m2_try = round(area, 1) if area is not None else None
+    price_per_m2_try = round(price / area) if price and area and area > 0 else None
+    lt = item.get("listing_type")
+    pt = item.get("property_type")
     return {
         "source_url": item.get("source_url"),
         "source_site": item.get("source_site"),
         "title": item.get("title"),
         "title_ascii": _ascii_text(item.get("title")),
         "price": item.get("price"),
-        "currency": item.get("currency"),
+        "price_try": price_try,
+        "currency": item.get("currency") or "TRY",
         "area_sqm": item.get("area_sqm"),
+        "size_m2_try": size_m2_try,
+        "price_per_m2_try": price_per_m2_try,
         "rooms": item.get("rooms"),
-        "listing_type": item.get("listing_type"),
-        "property_type": item.get("property_type"),
+        "listing_type": lt,
+        "listing_type_tr": _LISTING_TYPE_TR.get(lt) if lt else None,
+        "property_type": pt,
+        "property_type_tr": _PROPERTY_TYPE_TR.get(pt) if pt else None,
         "district": item.get("district"),
         "city": item.get("city"),
+        "scraped_at": item.get("scraped_at"),
     }
 
 
@@ -390,4 +414,8 @@ def enrich_job_payload(payload: dict, include_ai: bool = True) -> dict:
     }
     payload["market_rows"] = market_rows
     payload["market_rows_count"] = len(market_rows)
+    # listings_preview: standardized list (frontend + main backend için)
+    payload["listings_preview"] = [_listing_preview(item) for item in listings]
+    # derived_metrics shortcuts at response root (kolayca erişim için)
+    payload["derived_metrics"] = metrics
     return payload
