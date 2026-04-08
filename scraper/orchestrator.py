@@ -109,7 +109,8 @@ class ScrapeOrchestrator:
 
                 if listing:
                     normalized = self._normalize_listing(listing, source_url=url)
-                    if self._matches_filters(normalized, listing_type=listing_type, property_type=property_type):
+                    _geo = job.search_context.get("geo", {})
+                    if self._matches_filters(normalized, listing_type=listing_type, property_type=property_type, geo=_geo):
                         if not self._is_duplicate_listing(job.listings, normalized):
                             job.listings.append(Listing(**normalized))
                             logger.info(f"Listing extracted from {url}: {listing.get('title', '')}")
@@ -292,11 +293,46 @@ class ScrapeOrchestrator:
         )
         return normalized
 
-    def _matches_filters(self, listing: dict, listing_type: str = "all", property_type: str = "all") -> bool:
+    def _matches_filters(self, listing: dict, listing_type: str = "all", property_type: str = "all", geo: dict | None = None) -> bool:
         if listing_type != "all" and listing.get("listing_type") and listing["listing_type"] != listing_type:
             return False
         if property_type != "all" and listing.get("property_type") and listing["property_type"] != property_type:
             return False
+        if geo and not self._is_local_listing(listing, geo):
+            return False
+        return True
+
+    def _is_local_listing(self, listing: dict, geo: dict) -> bool:
+        """Scraped ilanın hedef lokasyonla eşleştiğini doğrula."""
+        from scraper.google_search import _normalize_text, _locality_context, _ANTALYA_DISTRICTS_ASCII
+
+        ctx = _locality_context(geo)
+        target_city = ctx.get("city", "").strip()
+        admin_district = ctx.get("admin_district", "").strip()
+
+        listing_city = _normalize_text(listing.get("city", "") or "")
+        listing_district = _normalize_text(listing.get("district", "") or "")
+        listing_address = _normalize_text(listing.get("address", "") or "")
+
+        # Lokasyon verisi yoksa doğrulayamayız, kabul et
+        if not listing_city and not listing_district and not listing_address:
+            return True
+
+        # Şehir uyuşmazlığı → reddet
+        if target_city and listing_city and listing_city != target_city:
+            logger.debug(
+                f"Lokasyon filtresi: şehir uyuşmazlığı ({listing_city} != {target_city}) - {listing.get('source_url', '')}"
+            )
+            return False
+
+        # Aynı şehir içinde farklı ilçe (örn. Antalya'da Kepez vs Muratpaşa) → reddet
+        if target_city and listing_city == target_city and admin_district and listing_district:
+            if listing_district in _ANTALYA_DISTRICTS_ASCII and listing_district != admin_district:
+                logger.debug(
+                    f"Lokasyon filtresi: ilçe uyuşmazlığı ({listing_district} != {admin_district}) - {listing.get('source_url', '')}"
+                )
+                return False
+
         return True
 
     def _is_duplicate_listing(self, existing: list[Listing], candidate: dict) -> bool:

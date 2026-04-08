@@ -691,7 +691,7 @@ def _rank_and_filter_candidates(
         scored.append(candidate)
 
     filtered = [item for item in scored if item.get("is_local_match")]
-    used_filtered = len(filtered) >= min(4, max(1, len(scored)))
+    used_filtered = len(filtered) > 0
     items = filtered if used_filtered else scored
 
     detail_items = [item for item in items if item.get("is_detail_url")]
